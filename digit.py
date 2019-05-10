@@ -16,3 +16,10 @@ class Digit:
         print("posY = " + str(self.posY))
         print("id = " + str(self.id))
         print("cur = " + str(self.cur))
+
+
+    def lessThanX(other):
+        if(self.posX < other.posX):
+            return True
+        else:
+            return False

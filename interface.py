@@ -11,6 +11,8 @@ theFrame.pack()
 curwidth = 1200
 curheight = 900
 
+centerLine = int(((curwidth-200)/2)+200)
+
 digitList = []
 curDigit = None
 
@@ -30,13 +32,6 @@ def get_text():
 
     #draw_text(s,s,300,100,100)
 
-#def key(event):
-    #w.focus_set()
-    #print ("pressed")
-    #print(repr(event.char))
-    #curElm = id_to_object(id)
-    #if(curElm == None):
-        #print("no element selected")
 
 def callback(event):
     frame.focus_set()
@@ -140,6 +135,8 @@ def plusSize2():
     fontstr = "Times "+str(size)+" italic bold"
     w.itemconfig(id,font =fontstr)
     elm.size = size
+    print("attempting plus")
+    print(elm.view())
 
 def minusSize2():
     id = findCur()
@@ -147,26 +144,76 @@ def minusSize2():
         return
     elm = id_to_object(id)
     size = elm.size / 2
+    size = int(size)
     fontstr = "Times "+str(size)+" italic bold"
     w.itemconfig(id,font =fontstr)
     elm.size = size
+    print("attempting minus")
+    print(elm.view())
 
-def minusSize():
-    id = findCur()
-    if(id == None):
-        return
-    elm = id_to_object(id)
-    tempname = elm.name + "~"
-    tempinfo = elm.text
-    tempX = elm.posX
-    tempY = elm.posY
-    tempsize = int(elm.size / 2)
-    w.delete(id)
-    #time.sleep(.1)
-    draw_text(tempname,tempinfo,tempX,tempY,tempsize)
-    return
+def center():
+    rowCounter = 100
+    while(rowCounter <= curheight):
+        centerRow(rowCounter)
+        rowCounter = rowCounter + 100
+
+def centerRow(posY):
+    rowList = []
+    low = 0
+    high = 0
+    for elm in digitList:
+        if (elm.posY <= posY) and (elm.posY > posY-100):
+            rowList.append(elm)
+    if len(rowList) > 0:
+        low, high = getLowHighX(rowList)
+        lineLength = high - low
+        tempLen = int(lineLength/2)
+        startPoint = centerLine - tempLen
+        shiftToStart(rowList,startPoint)
 
 
+def shiftToStart(rowList,startPos):
+    #assumes posX is rightBound
+    print("unsorted")
+    for elm in rowList:
+        print(elm.posX)
+    sortedList = isrl(rowList)
+    print("sorted")
+    for elm in sortedList:
+        print(elm.posX)
+    for elm in sortedList:
+
+        w.move(elm.id,startPos-elm.posX,0)
+        elm.posX = startPos
+        startPos = startPos + elm.size
+
+#insertionSortRowList
+def isrl(rowList):
+    retList = []
+
+    while(len(rowList) > 0):
+        lowestX = 1200
+        for elm in rowList:
+            if(elm.posX < lowestX):
+                lowestX = elm.posX
+
+        for elm in rowList:
+            if(elm.posX == lowestX):
+                retList.append(elm)
+                rowList.remove(elm)
+    return retList
+
+
+def getLowHighX(rowList):
+    tempElm = rowList[0]
+    leftmost = tempElm.posX
+    rightmost = tempElm.posX
+    for elm in rowList:
+        if(elm.posX < leftmost):
+            leftmost = elm.posX
+        if(elm.posX > rightmost):
+            rightmost = elm.posX
+    return leftmost, rightmost
 
 def sortDigitList():
     tupleList = []
@@ -292,8 +339,9 @@ label4.grid(row=14,column=0)
 button3 = Button(frame,text="Copy Bottom Line",bg="green",state="normal",command=copyBotLine)
 button3.grid(row=15,column=0)
 
-label5 = Label(frame,bg="grey")
-label5.grid(row=16,column=0)
+button3b = Button(frame,text="center",bg="green",state="normal",command=center)
+button3b.grid(row=16,column=0)
+
 
 label6 = Label(frame,text="Save to file:",bg="green")
 label6.grid(row=17,column=0)
@@ -303,6 +351,7 @@ entry4.grid(row=18,column=0)
 
 button4 = Button(frame,text="save",bg="green",state="normal",command=saveToText2)
 button4.grid(row=19,column=0)
+
 
 def draw_grid(ch,cw,lineSize,space):
     a = int((cw/100)*2)

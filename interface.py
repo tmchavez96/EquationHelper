@@ -1,6 +1,7 @@
 from tkinter import *
 import time
 from digit import Digit
+import re
 
 root = Tk()
 
@@ -16,7 +17,8 @@ centerLine = int(((curwidth-200)/2)+200)
 digitList = []
 curDigit = None
 
-#event functions that need that need to be declared before canvas
+#--event functions that need that need to be declared before canvas--
+#function used to add text to the green bar on the canvas
 def get_text():
     s = entry.get()
     inputlen = len(s)
@@ -30,9 +32,44 @@ def get_text():
 
         i = i +1
 
-    #draw_text(s,s,300,100,100)
+def add_step():
+    filt = re.compile('[+*%/-]\s*\d*\s*')
+    s = entry.get()
+    test = filt.match(s)
+    if test:
+        posY = getBotY()
+        rowList = []
+        for elm in digitList:
+            if (elm.posY <= posY) and (elm.posY > posY-100):
+                rowList.append(elm)
+        low, high = getLowHighX(rowList)
+        write_step(s,low,high,posY)
+    else:
+        print("not a properly formated step")
+
+#add_step helper function
+#actually adds text to Canvas
+#assumes default text size of 100 required
+def write_step(step,low,high,posY):
+    lineLength = high - low
+    tempLen = int(lineLength/2)
+    stepSize = len(step)
+    #sp = startpoint, isp = inverted start point
+    sp = centerLine - tempLen
+    sp = sp - (stepSize*100)
+    isp = centerLine + tempLen + 100
+    for char in step:
+        draw_text(char+"a",char,isp,posY,100)
+        isp = isp+100
+    istep = step[::-1]
+    for char in istep:
+        draw_text(char+"b",char,sp,posY,100)
+        sp = sp + 100
 
 
+
+#callback handles the mouseclick events
+#allows moving items on the canvas
 def callback(event):
     frame.focus_set()
     #print ("clicked at")
@@ -46,6 +83,8 @@ def callback(event):
     else:
         update_text(curDigit,event.x,event.y)
 
+#helper function
+#finds the currently selected element
 def findCur():
     #print("**in findCur")
     for elm in digitList:
@@ -58,26 +97,24 @@ def findCur():
 
     return None
 
-
+#change the color of an element
+#never managed to work
+#sad reacts only
 def changeColor(id,color):
-    #print("in change color id and color: " +str(id)+ ","+color)
     w.itemconfigure(id,fill=color)
     w.update_idletasks()
     w.update()
 
+#uses mouse event to see if a digit was selected
+#if so, mark that digit as current
 def bindDigit(eventX,eventY):
     for elm in digitList:
-        #print("checking bind for " + elm.name)
         eX = str(elm.posX)
         eY = str(elm.posY)
         eS = str(elm.size)
-        #print("eml stats: " + eX+" " +eY+" "+eS)
         flag = check_coords(eventX,eventY,elm.posX,elm.posY,elm.size)
         if (flag):
-            #print("check passed")
             curDigit = elm.id
-            #print("curdigit = ")
-            #print(curDigit)
             elm.cur = True
             return True
         else:
@@ -85,6 +122,7 @@ def bindDigit(eventX,eventY):
 
     return False
 
+#delets current item, pretty self explanitory
 def delItem():
     id = findCur()
     if (id != None):
@@ -95,14 +133,15 @@ def delItem():
     else:
         print("no item selected")
 
+#copies the lowest elemnts on the canavas
 def copyBotLine():
     posY = getBotY()
     for elm in digitList:
-        #if (elm.posY >= (posY-elm.size) and eml.posY <= posY):
+        #if (elm.posY > (posY-elm.size) and eml.posY <= posY):
         if (elm.posY == posY):
             draw_text(elm.name+"*",elm.text,elm.posX,elm.posY+100,elm.size)
 
-
+#helper
 def getBotY():
     temp = 0
     for elm in digitList:
@@ -111,21 +150,7 @@ def getBotY():
 
     return temp
 
-def plusSize():
-    id = findCur()
-    if(id == None):
-        return
-    elm = id_to_object(id)
-    tempname = elm.name + "~"
-    tempinfo = elm.text
-    tempX = elm.posX
-    tempY = elm.posY
-    tempsize = elm.size * 2
-    w.delete(id)
-    #time.sleep(.1)
-    draw_text(tempname,tempinfo,tempX,tempY,tempsize)
-    return
-
+#doubles the size of the selected element
 def plusSize2():
     id = findCur()
     if(id == None):
@@ -138,6 +163,7 @@ def plusSize2():
     print("attempting plus")
     print(elm.view())
 
+#opposite of plusSize
 def minusSize2():
     id = findCur()
     if(id == None):
@@ -151,12 +177,16 @@ def minusSize2():
     print("attempting minus")
     print(elm.view())
 
+#wrapper function for center
 def center():
     rowCounter = 100
     while(rowCounter <= curheight):
         centerRow(rowCounter)
         rowCounter = rowCounter + 100
 
+#finds all the elemnts that belong in a "row"
+#calculate the line length
+#uses linelength to shift to center
 def centerRow(posY):
     rowList = []
     low = 0
@@ -171,27 +201,22 @@ def centerRow(posY):
         startPoint = centerLine - tempLen
         shiftToStart(rowList,startPoint)
 
-
+#helper function, moves the elements accordingly
 def shiftToStart(rowList,startPos):
-    #assumes posX is rightBound
-    print("unsorted")
-    for elm in rowList:
-        print(elm.posX)
     sortedList = isrl(rowList)
-    print("sorted")
     for elm in sortedList:
-        print(elm.posX)
-    for elm in sortedList:
-
         w.move(elm.id,startPos-elm.posX,0)
         elm.posX = startPos
         startPos = startPos + elm.size
 
 #insertionSortRowList
+#ended up making my own sorting method
+#empties original list and returns a sorted one
 def isrl(rowList):
     retList = []
 
     while(len(rowList) > 0):
+        #gross magic number, max width for first comparison
         lowestX = 1200
         for elm in rowList:
             if(elm.posX < lowestX):
@@ -203,7 +228,8 @@ def isrl(rowList):
                 rowList.remove(elm)
     return retList
 
-
+#helper function
+#returns the low,high poisitons of a row
 def getLowHighX(rowList):
     tempElm = rowList[0]
     leftmost = tempElm.posX
@@ -215,17 +241,16 @@ def getLowHighX(rowList):
             rightmost = elm.posX
     return leftmost, rightmost
 
+#turns list of digits into a tupl containing id,posX,posY
 def sortDigitList():
     tupleList = []
     for elm in digitList:
         curTuple = (elm.id,elm.posX,elm.posY)
         tupleList.append(curTuple)
-    #digitList = sorted(digitList, key = lambda x: (x[1], x[2]))
     print("the tuple list was")
-    #print(tupleList)
     return tupleList
 
-
+#used for pythons sort
 def useX(e):
     return e[1]
 
@@ -236,11 +261,8 @@ def getRowTuple(tupleList,height):
         if(tup[2] <= height and tup[2] > (height-100)):
             rowTuple.append(tup)
 
-    #print("row tuple")
-    #print(rowTuple)
+
     rowTuple.sort(key = useX)
-    #print("sorted")
-    #print(rowTuple)
     return rowTuple
 
 #hardwired around size 100
@@ -259,8 +281,10 @@ def stringForLine(tupleList,height):
     #print(retstring)
     return retstring
 
-#random string structure?
-#
+
+#wrapped function for saving to text
+#recieves string interpretation of each line
+#writes to file specified in interface
 def saveToText2():
     filename = entry4.get()
     fd = open(filename,"w")
@@ -306,8 +330,8 @@ entry.grid(row=3,column=0)
 button = Button(frame,text="Enter",bg="green",state="normal",command=get_text)
 button.grid(row=4,column=0)
 
-label = Label(frame,bg="grey")
-label.grid(row=5,column=0)
+buttonw = Button(frame,text="add step",bg="green",state="normal",command=add_step)
+buttonw.grid(row=5,column=0)
 
 label3 = Label(frame,text="Currently selected:",bg="green")
 label3.grid(row=6,column=0)

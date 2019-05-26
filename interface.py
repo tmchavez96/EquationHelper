@@ -20,6 +20,8 @@ curDigit = None
 #--event functions that need that need to be declared before canvas--
 #function used to add text to the green bar on the canvas
 def get_text():
+    #clear the first row to avoid overlapping text
+    clearRow(100)
     s = entry.get()
     inputlen = len(s)
     #print("input length = " + str(inputlen))
@@ -31,19 +33,48 @@ def get_text():
             xcount = xcount + 100
 
         i = i +1
+    center()
+
+def clearBottomRow():
+    posY = getBotY()
+    clearRow(posY)
+
+#function to clear row on Y value
+#this is gross code but removing list elements
+#in one iteration was hurting me
+def clearRow(posY):
+    index = 0
+    count = 0
+    for elm in digitList:
+        if(elm.posY <= posY) and (elm.posY > posY-100):
+            count = count + 1
+        index = index + 1
+    while(count > 0):
+        index = 0
+        for elm in digitList:
+            if(elm.posY <= posY) and (elm.posY > posY-100):
+                w.delete(elm.id)
+                digitList.pop(index)
+                break
+            index = index + 1
+        count = count - 1
 
 def add_step():
-    filt = re.compile('[+*%/-]\s*\d*\s*')
     s = entry.get()
+    filt = re.compile('[+*%/-]\s*\d*\s*')
     test = filt.match(s)
+    filt2 = re.compile('\d*\s*[+*%/-]\s*')
+    test2 = filt2.match(s)
+    posY = getBotY()
+    rowList = []
+    for elm in digitList:
+        if (elm.posY <= posY) and (elm.posY > posY-100):
+            rowList.append(elm)
+    low, high = getLowHighX(rowList)
     if test:
-        posY = getBotY()
-        rowList = []
-        for elm in digitList:
-            if (elm.posY <= posY) and (elm.posY > posY-100):
-                rowList.append(elm)
-        low, high = getLowHighX(rowList)
         write_step(s,low,high,posY)
+    elif test2:
+        write_step(s[::-1],low,high,posY)
     else:
         print("not a properly formated step")
 
@@ -188,6 +219,9 @@ def center():
 #calculate the line length
 #uses linelength to shift to center
 def centerRow(posY):
+    #second thought, does using a new list to put elms in,
+    #then shifting them not mess up the digitList dataStructure?
+    #seems to work fine
     rowList = []
     low = 0
     high = 0
@@ -357,8 +391,8 @@ buttona.grid(row=12,column=0)
 buttonb = Button(frame,text="-",bg="green",state="normal",command=minusSize2)
 buttonb.grid(row=13,column=0)
 
-label4 = Label(frame,bg="grey")
-label4.grid(row=14,column=0)
+buttonc = Button(frame,text="Clear Bottom Line",bg="green",state="normal",command=clearBottomRow)
+buttonc.grid(row=14,column=0)
 
 button3 = Button(frame,text="Copy Bottom Line",bg="green",state="normal",command=copyBotLine)
 button3.grid(row=15,column=0)

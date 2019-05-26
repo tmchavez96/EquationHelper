@@ -59,6 +59,9 @@ def clearRow(posY):
             index = index + 1
         count = count - 1
 
+
+#adds input from user as step,
+# to both sides of the equation
 def add_step():
     s = entry.get()
     filt = re.compile('[+*%/-]\s*\d*\s*')
@@ -208,6 +211,81 @@ def minusSize2():
     print("attempting minus")
     print(elm.view())
 
+#combine wrapper, to call all lines
+#for now, operate only on bot line
+def compact():
+    posY = getBotY()
+    #rowCounter = 100
+    #while(rowCounter <= curheight):
+    compactRow(posY)
+        #rowCounter = rowCounter + 100
+
+def compactRow(posY):
+    rowList = []
+    sortedList = []
+    eqx = 0
+    for elm in digitList:
+        if (elm.posY <= posY) and (elm.posY > posY-100):
+            rowList.append(elm)
+    if len(rowList) > 0:
+        sortedList = isrl(rowList)
+    else:
+        return
+    midIndex = -1
+    curIndex = 0
+    for elm in sortedList:
+        if elm.text == '=':
+            midIndex = curIndex
+            eqx = elm.posX
+            break
+        curIndex = curIndex + 1
+    if midIndex < 0:
+        return None
+    side1 = []
+    side2 = []
+    curIndex = 0
+    for elm in sortedList:
+        if curIndex < midIndex:
+            side1.append(elm)
+        if curIndex > midIndex:
+            side2.append(elm)
+        curIndex = curIndex + 1
+    compactSide(side1)
+    compactSide(side2)
+    #draw the compacted line on the next line, current line will bug
+
+    for elm in side1:
+        draw_text(elm.name+":",elm.text,elm.posX,elm.posY+100,elm.size)
+    draw_text("=*","=",eqx,posY+100,100)
+    for elm in side2:
+        draw_text(elm.name+":",elm.text,elm.posX,elm.posY+100,elm.size)
+
+def compactSide(inList):
+    filt = re.compile('\d*\w*')
+    filt2 = re.compile('[0-9]+[0-9a-zA-Z]+')
+    if len(inList) < 2:
+        return None
+    endpoint = len(inList)-1
+    index = 0
+    while(index < endpoint):
+        elm1 = inList[index]
+        elm2 = inList[index+1]
+        compstr = elm1.text + elm2.text
+        #print(compstr)
+        reHit = filt2.match(compstr)
+        if reHit:
+            #print("reHIT on ")
+            elm1.text = elm1.text + elm2.text
+            inList.pop(index + 1)
+            endpoint = endpoint - 1
+            index = index-1
+        index = index + 1
+    retstr = ""
+    for elm in inList:
+        retstr = retstr + elm.text
+    #print("did we have tegridy?: " + retstr)
+
+
 #wrapper function for center
 def center():
     rowCounter = 100
@@ -250,7 +328,7 @@ def isrl(rowList):
     retList = []
 
     while(len(rowList) > 0):
-        #gross magic number, max width for first comparison
+        #magic number, max width for first comparison
         lowestX = 1200
         for elm in rowList:
             if(elm.posX < lowestX):
@@ -349,6 +427,7 @@ w.pack()
 frame = Frame(root,bg = "grey")
 frame.place(relwidth = 0.175,relheight = 1.0)
 
+#~~~~~~~TOOL BAR FORMATTING ~~~~~~~~~~~
 exitbutton = Button(frame, text="Quit", bg="red",command=root.destroy)
 exitbutton.grid(row=0,column=0)
 
@@ -410,6 +489,13 @@ entry4.grid(row=18,column=0)
 button4 = Button(frame,text="save",bg="green",state="normal",command=saveToText2)
 button4.grid(row=19,column=0)
 
+label = Label(frame,bg="grey")
+label.grid(row=20,column=0)
+
+button5 = Button(frame,text="compact",bg="green",state="normal",command=compact)
+button5.grid(row=21,column=0)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def draw_grid(ch,cw,lineSize,space):
     a = int((cw/100)*2)
@@ -498,7 +584,7 @@ def update_text(id,eventX,eventY):
     curDigit = None
     elm.cur = False
 
-    #elm.view()
+
 
 #given an elems current coords, and mouseclick coords
 #use elems size to to get proper lower right bound (modulus to subtraction)

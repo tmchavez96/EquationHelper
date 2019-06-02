@@ -24,6 +24,17 @@ def get_text():
     clearRow(100)
     s = entry.get()
     inputlen = len(s)
+    safety = 0
+    j = 0
+    while(j < inputlen):
+        if(s[j] != ' '):
+            safety = safety + 1
+        j = j + 1
+
+    if(safety > 10):
+        print("input too large")
+        return
+
     #print("input length = " + str(inputlen))
     xcount = 0
     i = 0
@@ -75,8 +86,10 @@ def add_step():
             rowList.append(elm)
     low, high = getLowHighX(rowList)
     if test:
+        print("flip")
         write_step(s,low,high,posY)
     elif test2:
+        print("flop")
         write_step(s[::-1],low,high,posY)
     else:
         print("not a properly formated step")
@@ -215,12 +228,15 @@ def minusSize2():
 #for now, operate only on bot line
 def compact():
     posY = getBotY()
-    #rowCounter = 100
-    #while(rowCounter <= curheight):
-    compactRow(posY)
-        #rowCounter = rowCounter + 100
+    compactRow(posY,True)
 
-def compactRow(posY):
+def simplify():
+    posY = getBotY()
+
+    compactRow(posY,False)
+
+#should probably comment
+def compactRow(posY,flag):
     rowList = []
     sortedList = []
     eqx = 0
@@ -250,8 +266,18 @@ def compactRow(posY):
         if curIndex > midIndex:
             side2.append(elm)
         curIndex = curIndex + 1
-    compactSide(side1)
-    compactSide(side2)
+    if flag:
+        compactSide(side1)
+        compactSide(side2)
+    else:
+        startX = 300
+        startY = getBotY() + 100
+        startX = simplifySide(side1,startX,startY)
+        draw_text("=>","=",startX,startY,100)
+        simplifySide(side2,startX+100,startY)
+        center()
+        return
+
     #draw the compacted line on the next line, current line will bug
 
     for elm in side1:
@@ -260,6 +286,10 @@ def compactRow(posY):
     for elm in side2:
         draw_text(elm.name+":",elm.text,elm.posX,elm.posY+100,elm.size)
 
+
+#alter list so elements intended to be together
+#are combines into one element
+#ex. 2 x -> 2x
 def compactSide(inList):
     filt = re.compile('\d*\w*')
     filt2 = re.compile('[0-9]+[0-9a-zA-Z]+')
@@ -270,11 +300,12 @@ def compactSide(inList):
     while(index < endpoint):
         elm1 = inList[index]
         elm2 = inList[index+1]
-        compstr = elm1.text + elm2.text
-        #print(compstr)
+        e1t = elm1.text
+        lelm1 = len(e1t)
+        compstr = e1t[lelm1-1] + elm2.text
         reHit = filt2.match(compstr)
         if reHit:
-            #print("reHIT on ")
+            print("reHIT on " + compstr)
             elm1.text = elm1.text + elm2.text
             inList.pop(index + 1)
             endpoint = endpoint - 1
@@ -285,6 +316,174 @@ def compactSide(inList):
         retstr = retstr + elm.text
     #print("did we have tegridy?: " + retstr)
 
+#this will work for conjoined subscipts (2x)
+#however, element seperated subscripts (2x+1)
+#will not
+def simplifySide(inList, startX,startY):
+    first = inList[0]
+    baseSize = first.size
+    dict = { "int":0}
+    setSub(inList)
+    index = 0
+    for elm in inList:
+        #get the coefficient and variable
+        coef = getCoef(elm)
+        var = getVar(elm)
+        #check to see if element is intented to be negative
+        isNegative = signCheck(index,inList)
+        if(var == None or elm.size < baseSize):
+            #if element was an operand of subscript, ignore it
+            print("skipped"+ elm.text +"?")
+            index = index+1
+            continue
+        #coef being none, means it should be one
+        #ex. "x" is really "1x"
+        if(coef == None):
+            coef = 1
+        #if negative, make it negative
+        if(isNegative):
+            print("pre coef logic, coef = " + str(coef))
+            coef = 0-coef
+            print("post coef logic, coef= " + str(coef))
+        check = dict.get(var)
+        #if key doesnt exist, create it
+        if(check == None):
+            dict[var] = coef
+        else:
+            print("updating dict..")
+            dict[var] = check + coef
+        index = index + 1
+    print("Dolaris, analysis. length is")
+    print(len(dict))
+    for key in dict:
+        val = dict.get(key)
+        print("key/val : " + key + " / " + str(val))
+
+    firstPair = True
+    retList = []
+    print("newtext $")
+    for key in dict:
+        coef = dict.get(key)
+        newtext = ''
+        if(coef == 0):
+            continue
+        else:
+            if(key != "int"):
+                if(coef != 1 and coef != -1):
+                    newtext = (str(coef)+key)
+                else:
+                    newtext = key
+            else:
+                newtext = str(coef)
+        print(newtext)
+        negbool = checkCoef(coef)
+        if(negbool):
+            retList.append("-")
+
+                #newtext = newtext[1]
+        else:
+            if(firstPair == False):
+                retList.append("+")
+
+        retList.append(newtext)
+        firstPair = False
+
+
+
+    newY = startY
+    newX = startX
+    for elm in retList:
+        draw_text(elm+">",elm,newX,newY,baseSize)
+        newX = newX + 100
+    return newX
+
+#check coef for - sign
+def checkCoef(coef):
+    if(coef < 0):
+        return True
+
+
+#check if previos element was '-'
+def signCheck(index,inList):
+    if(index == 0):
+        return False
+    prev = inList[index-1]
+    print("signCheck: comparing " + prev.text + " index: " + str(index))
+    if(prev.text == '-'):
+        print("signCheck wokred")
+        return True
+    else:
+        return False
+
+#assume format [int]*[char]
+#example 12x
+def getCoef(elm):
+    term = elm.text
+    coef = ""
+    end = len(term)-1
+    index = 0
+    filt = re.compile('[0-9]')
+    while(index <= end):
+        hit = filt.match(elm.text[index])
+        if(hit):
+            #print("coef hit")
+            coef = coef + elm.text[index]
+        else:
+            break
+        index = index + 1
+    if(len(coef) >= 1):
+        return int(coef)
+    else:
+        return None
+
+#assumes same format as getCoef
+def getVar(elm):
+    term = elm.text
+    var = ""
+    end = len(term)-1
+    index = 0
+    filt = re.compile('[a-zA-z]')
+    start = -1
+    #edge case
+    while(index <= end):
+        #print("on "+str(elm.text[index]))
+        hit = filt.match(elm.text[index])
+        if(hit):
+            #print("hit")
+            start = index
+            break
+        index = index+1
+    filt2 = re.compile('[/+%*-]')
+    if(filt2.match(elm.text)):
+        return None
+    if start < 0:
+        return "int"
+    #print("start = "+ str(start))
+    while(start <= end):
+        var = var + elm.text[start]
+        start = start + 1
+    if(elm.sub != None):
+        elm.sub.quickView()
+        var = var + elm.sub.text
+    return var
+
+#use elm sizes to allocate elm "sub" field
+def setSub(inList):
+    index = 0
+    end = len(inList)-1
+    for elm in inList:
+        next = elm
+        if(index < end):
+            next = inList[index+1]
+        else:
+            break
+        if(next.size < elm.size):
+            elm.sub = next
+        else:
+            elm.sub = None
+        index = index + 1
+
+    return
 
 #wrapper function for center
 def center():
@@ -316,10 +515,21 @@ def centerRow(posY):
 #helper function, moves the elements accordingly
 def shiftToStart(rowList,startPos):
     sortedList = isrl(rowList)
+    firstElm = True
     for elm in sortedList:
+        if firstElm:
+            firstElm = False
+        else:
+            offset = len(elm.text)
+            x = int(offset/2)
+            y = offset%2
+            res = x+y
+            res = res * elm.size
+            #print("adding to startpos: "+str(res))
+            startPos = startPos + res
         w.move(elm.id,startPos-elm.posX,0)
         elm.posX = startPos
-        startPos = startPos + elm.size
+        #startPos = startPos + elm.size
 
 #insertionSortRowList
 #ended up making my own sorting method
@@ -494,6 +704,9 @@ label.grid(row=20,column=0)
 
 button5 = Button(frame,text="compact",bg="green",state="normal",command=compact)
 button5.grid(row=21,column=0)
+
+button6 = Button(frame,text="simplify",bg="green",state="normal",command=simplify)
+button6.grid(row=22,column=0)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

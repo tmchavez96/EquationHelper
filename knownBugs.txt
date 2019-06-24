@@ -1,0 +1,7 @@
+*add step with longer term(+2x)
+	-cant simply reverse string(would be x 2 + instead of 2x+)
+
+*compact doesnt work on constants with exponents
+ 	-elms with size less than 100 in the row are in the comparison string
+	-filter out strings lesser size elms to their own string?
+	-or use elm.sup to decide intstead of size?
